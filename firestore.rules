@@ -1,22 +1,40 @@
+rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     match /posts/{post} {
       allow read: if true;
-      allow create: if request.auth.uid == request.resource.data.createdBy;
-      allow update, delete: if request.auth.uid == resource.data.createdBy;
+      allow create: if request.auth != null
+                    && request.auth.uid == request.resource.data.createdBy
+                    && request.resource.data._likeCount == 0;
+      allow update: if request.auth != null
+                    && request.auth.uid == resource.data.createdBy
+                    && request.resource.data.createdBy == resource.data.createdBy
+                    && request.resource.data._likeCount == resource.data._likeCount;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.createdBy;
     }
 
     match /postLikes/{postLike} {
       allow read: if true;
       allow create: if request.auth.uid == request.resource.data.createdBy;
-      allow update, delete: if request.auth.uid == resource.data.createdBy;
+      allow update: if request.auth != null
+                    && request.auth.uid == resource.data.createdBy
+                    && request.resource.data.createdBy == resource.data.createdBy
+                    && request.resource.data.postId == resource.data.postId;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.createdBy;
     }
 
     match /subscriptions/{subscription} {
       allow read: if request.auth.uid == resource.data.createdBy;
-      allow create: if request.auth.uid == request.resource.data.createdBy;
-      allow update, delete: if request.auth.uid == resource.data.createdBy;
+      allow create: if request.auth != null
+                    && request.auth.uid == request.resource.data.createdBy
+                    && request.resource.data.keys().hasOnly(['createdBy', 'createdOn', 'tempStripePaymentTokenId'])
+                    && request.resource.data.tempStripePaymentTokenId is string;
+      allow update: if request.auth != null
+                    && request.auth.uid == resource.data.createdBy
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                      .hasOnly(['tempStripePaymentTokenId', 'updatedBy', 'updatedOn']);
+      allow delete: if request.auth != null && request.auth.uid == resource.data.createdBy;
     }
 
   }
